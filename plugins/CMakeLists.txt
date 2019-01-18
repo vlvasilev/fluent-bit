@@ -151,6 +151,7 @@ REGISTER_OUT_PLUGIN("out_gelf")
 REGISTER_FILTER_PLUGIN("filter_grep")
 REGISTER_FILTER_PLUGIN("filter_stdout")
 REGISTER_FILTER_PLUGIN("filter_throttle")
+REGISTER_FILTER_PLUGIN("filter_size_throttle")
 
 if(FLB_REGEX)
   REGISTER_FILTER_PLUGIN("filter_kubernetes")
