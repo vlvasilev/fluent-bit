@@ -158,6 +158,7 @@ if(FLB_REGEX)
   REGISTER_FILTER_PLUGIN("filter_parser")
   REGISTER_FILTER_PLUGIN("filter_nest")
   REGISTER_FILTER_PLUGIN("filter_modify")
+  REGISTER_FILTER_PLUGIN("filter_exception_detection")
 endif()
 
 if(FLB_LUAJIT)
