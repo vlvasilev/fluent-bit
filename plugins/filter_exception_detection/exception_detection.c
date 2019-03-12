@@ -38,14 +38,21 @@
 #define SPLIT_DELIMITER '|'
 #define KEY_DEPTH 10
 
-/*load_field_key_list split @str into list of string representing the depth of a nested key.
+struct nested_key
+{
+    char *key;
+    int key_len;
+    struct mk_list _head;
+};
+
+/*load_nested_key_list split @str into list of string representing the depth of a nested key.
 The split is base on SPLIT_DELIMITER*/
-static inline int load_field_key_list(char *str, struct mk_list *the_list,
+static inline int load_nested_key_list(char *str, struct mk_list *the_list,
                                       size_t * list_size)
 {
     struct mk_list *split;
     struct mk_list *head = NULL;
-    struct field_key *fk;
+    struct nested_key *fk;
     struct flb_split_entry *entry;
 
     mk_list_init(the_list);
@@ -56,7 +63,7 @@ static inline int load_field_key_list(char *str, struct mk_list *the_list,
             return 0;
         }
         mk_list_foreach(head, split) {
-            fk = flb_malloc(sizeof(struct field_key));
+            fk = flb_malloc(sizeof(struct nested_key));
             if (!fk) {
                 flb_error("[%s] Not enough memory!", PLUGIN_NAME);
                 flb_utils_split_free(split);
@@ -100,7 +107,7 @@ static int cb_exception_detection_init(struct flb_filter_instance *f_ins,
     }
 
     str = flb_filter_get_property("stream", f_ins);
-    if (load_field_key_list(str, &ctx->log_fields, &ctx->log_fields_depth)) {
+    if (load_nested_key_list(str, &ctx->log_fields, &ctx->log_fields_depth)) {
         return -1;
     }
 
