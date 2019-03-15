@@ -111,16 +111,16 @@ inline static struct size_throttle_window *find_size_throttle_window(struct
                                                                      unsigned
                                                                      name_length)
 {
-    char **window;
+    char *window = NULL;
     size_t out_size;
-
-    flb_hash_get(table->windows, name, name_length, window, &out_size);
-    
-    if ( out_size < sizeof(struct size_throttle_window)){
-        flb_error("Malformed data in size window hashtable");
-        return NULL;
+    if (flb_hash_get(table->windows, name, name_length, &window, &out_size) >= 0){
+        if ( out_size < sizeof(struct size_throttle_window)){
+            flb_error("Malformed data in size window hashtable");
+            return NULL;
+        }
+        return (struct size_throttle_window *) window;
     }
-    return (struct size_throttle_window *) *window;
+    return NULL; 
 }
 
 inline static void add_size_throttle_window(struct size_throttle_table
@@ -129,7 +129,7 @@ inline static void add_size_throttle_window(struct size_throttle_table
                                             *window)
 {
     flb_hash_add(table->windows, window->name, strlen(window->name),
-                 (char *)window, sizeof(struct size_throttle_window));
+                 (char *) window, sizeof(struct size_throttle_window));
 }
 
 void destroy_size_throttle_table(struct size_throttle_table *table);

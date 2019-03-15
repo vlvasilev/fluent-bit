@@ -87,10 +87,9 @@ inline static void add_new_pane_to_each(struct size_throttle_table *ht,
         flb_time_get(&ftm);
         timestamp = flb_time_to_double(&ftm);
     }
-
     mk_list_foreach(head, &ht->windows->entries) {
-        entry = mk_list_entry(head, struct flb_hash_entry, _head);
-        current_window = (struct size_throttle_window *)entry->val;
+        entry = mk_list_entry(head, struct flb_hash_entry, _head_parent);
+        current_window = (struct size_throttle_window *)(entry->val);
         add_new_pane(current_window, timestamp);
         flb_debug
             ("[%s] Add new pane to \"%s\" window: timestamp: %ld, total %lu",
@@ -118,7 +117,6 @@ inline static void delete_older_than_n_seconds(struct size_throttle_table *ht, l
     }
 
     time_treshold = current_timestamp - seconds;
-
     for (i = 0; i < ht->windows->size; i++) {
         table = &ht->windows->table[i];
         mk_list_foreach_safe(head, tmp, &table->chains) {
@@ -150,7 +148,7 @@ inline static void print_all(struct size_throttle_table *ht)
     struct size_throttle_window *current_window;
 
     mk_list_foreach(head, &ht->windows->entries) {
-        entry = mk_list_entry(head, struct flb_hash_entry, _head);
+        entry = mk_list_entry(head, struct flb_hash_entry, _head_parent);
         current_window = (struct size_throttle_window *)entry->val;
         printf("[%s] Name %s\n", PLUGIN_NAME, current_window->name);
         printf("[%s] Timestamp %ld\n", PLUGIN_NAME,
@@ -262,7 +260,6 @@ static inline const msgpack_object
 
         current_field_size =
             get_msgobject_as_str(map.via.map.ptr[i].key, &current_field);
-        //printf("Looking at field %*.*s ", current_field_size, current_field);
         if (key->key_len != current_field_size) {
             continue;
         }
@@ -310,7 +307,6 @@ static inline int throttle_data_by_size(msgpack_object map,
     struct size_throttle_window *window;
     const msgpack_object *log_field;
     const msgpack_object *name_field;
-
     if (ctx->name_fields_depth > 0) {
         // We are looking for a message with a specific field. The other will not be taken to account.
         name_field = get_value_of_msgpack_object_map(map, &ctx->name_fields);
@@ -361,6 +357,7 @@ static inline int throttle_data_by_size(msgpack_object map,
     flb_debug("[%s]Load size is %lu.", PLUGIN_NAME, load_size);
 
     pthread_mutex_lock(&ctx->hash->lock);
+    
     window =
         find_size_throttle_window(ctx->hash, name_field_str,
                                   name_field_size);
@@ -394,6 +391,7 @@ static inline int throttle_data_by_size(msgpack_object map,
         pthread_mutex_unlock(&ctx->hash->lock);
         flb_debug("[%s] New window named \"%s\" was added with load %lu.",
                   PLUGIN_NAME, window->name, load_size);
+        flb_free(window);
     }
     else {
         /*We found the wanted window and now we are going to make check and modify it if needed */
@@ -557,6 +555,20 @@ static inline int configure(struct flb_filter_size_throttle_ctx *ctx,
     else {
         ctx->window_time_duration = SIZE_THROTTLE_DEFAULT_WINDOW_DURATION;
     }
+
+    /* Create the hash table of windows */
+    str = flb_filter_get_property("hash_table_size", f_ins);
+    if (str != NULL && (val = strtoul(str, &endp, 10)) > 0) {   
+        ctx->hash = create_size_throttle_table(val);
+    }
+    else {
+        ctx->hash = create_size_throttle_table(SIZE_THROTTLE_WINDOW_TABLE_DEFAULT_SIZE);
+    }
+    if (ctx->hash == NULL) {
+        flb_errno();
+        return -1;
+    }
+
     return 0;
 }
 
@@ -577,14 +589,6 @@ static int cb_throttle_init(struct flb_filter_instance *f_ins,
     ret = configure(ctx, f_ins);
     if (ret == -1) {
         flb_free(ctx);
-        return -1;
-    }
-
-    /* Create the hash table of windows */
-    //TODO remove magic number
-    ctx->hash = create_size_throttle_table(320);
-    if (ctx->hash == NULL) {
-        flb_errno();
         return -1;
     }
 

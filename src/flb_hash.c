@@ -188,7 +188,7 @@ int flb_hash_add(struct flb_hash *ht, char *key, int key_len,
     if (!key || key_len <= 0 || !val || val_size <= 0) {
         return -1;
     }
-
+    printf("\nContent: %.*s\n------------------------------------------\n", val_size, val);
     /* Check capacity */
     if (ht->max_entries > 0 && ht->total_count >= ht->max_entries) {
         /* FIXME: handle eviction mode */
@@ -209,7 +209,7 @@ int flb_hash_add(struct flb_hash *ht, char *key, int key_len,
     /* Generate hash number */
     hash = gen_hash(key, key_len);
     id = (hash % ht->size);
-
+    printf("ADD->Key: %.*s Length: %d Hash: %u ID: %d\n", key_len, key, key_len, hash, id);
     /* Allocate the entry */
     entry = flb_malloc(sizeof(struct flb_hash_entry));
     if (!entry) {
@@ -220,7 +220,7 @@ int flb_hash_add(struct flb_hash *ht, char *key, int key_len,
     entry->hits = 0;
 
     /* Store the key and value as a new memory region */
-    entry->key = flb_strdup(key);
+    entry->key = flb_strndup(key, key_len);
     entry->key_len = key_len;
     entry->val = flb_malloc(val_size + 1);
     if (!entry->val) {
@@ -238,10 +238,13 @@ int flb_hash_add(struct flb_hash *ht, char *key, int key_len,
     entry->val[val_size] = '\0';
     entry->val_size = val_size;
 
+    printf("Content: %.*s\n------------------------------------------\n", (int)entry->val_size, entry->val);
+
     /* Link the new entry in our table at the end of the list */
     table = &ht->table[id];
     entry->table = table;
 
+    printf("Stored pointer: %p\n", entry->val);
     /* Check if the new key already exists */
     if (table->count == 0) {
         mk_list_add(&entry->_head, &table->chains);
@@ -251,6 +254,7 @@ int flb_hash_add(struct flb_hash *ht, char *key, int key_len,
         mk_list_foreach_safe(head, tmp, &table->chains) {
             old = mk_list_entry(head, struct flb_hash_entry, _head);
             if (strcmp(old->key, entry->key) == 0) {
+                 printf("\n------------------KURRRRRRRR------------------------\n");
                 flb_hash_entry_free(ht, old);
                 break;
             }
@@ -258,6 +262,7 @@ int flb_hash_add(struct flb_hash *ht, char *key, int key_len,
         mk_list_add(&entry->_head, &table->chains);
         mk_list_add(&entry->_head_parent, &ht->entries);
     }
+
 
     table->count++;
     ht->total_count++;
@@ -280,9 +285,10 @@ int flb_hash_get(struct flb_hash *ht, char *key, int key_len,
 
     hash = gen_hash(key, key_len);
     id = (hash % ht->size);
-
+    printf("FIND->Key: %.*s Length: %d Hash: %u ID: %d\n", key_len, key, key_len, hash, id);
     table = &ht->table[id];
     if (table->count == 0) {
+        //printf("Empty table.\n");
         return -1;
     }
 
@@ -290,12 +296,15 @@ int flb_hash_get(struct flb_hash *ht, char *key, int key_len,
         entry = mk_list_entry_first(&table->chains,
                                     struct flb_hash_entry,
                                     _head);
-
-        if (strncmp(entry->key, key, key_len) != 0) {
+       // printf("Table with only one entry.\n");
+        //printf("entry->key_len != key -> %s\n", entry->key_len != key_len ? "True": "False");
+       // printf("strncmp(entry->key, key, key_len) != 0 -> %s\n", strncmp(entry->key, key, key_len) != 0 ? "TRUE": "FALSE");
+        if (entry->key_len != key_len || strncmp(entry->key, key, key_len) != 0) {
             entry = NULL;
         }
     }
     else {
+        //printf("Interation\n");
         /* Iterate entries */
         mk_list_foreach(head, &table->chains) {
             entry = mk_list_entry(head, struct flb_hash_entry, _head);
@@ -304,7 +313,7 @@ int flb_hash_get(struct flb_hash *ht, char *key, int key_len,
                 continue;
             }
 
-            if (strcmp(entry->key, key) == 0) {
+            if (strncmp(entry->key, key, key_len) == 0) {
                 break;
             }
 
