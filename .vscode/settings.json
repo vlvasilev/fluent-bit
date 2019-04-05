@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "lua_config.h": "c",
+        "flb_luajit.h": "c"
+    }
+}
