@@ -20,6 +20,11 @@ static const char const **JAVA_RULES[] = {
     NULL
 };
 
+
+static const char const *supported_languages[] = {
+    "java"
+};
+
 struct flb_hash *get_rules(const char const *** rules){
     int size;
     int i;
@@ -57,4 +62,41 @@ struct flb_hash *get_rules(const char const *** rules){
 
     return rules_table;
 }
+
+struct flb_hash *get_rules_by_names(const char const ** rules_names){
+    int size = 0;
+    int i;
+    struct flb_hash *rules_table = NULL;
+    struct flb_hash *language_rules_table = NULL;
+    if (rules_names){
+        while(rules_names[size]){
+            size++;
+        }
+    }
+
+    if (size){
+        rules_table = flb_hash_create(FLB_HASH_EVICT_NONE, size, size);
+        if(rules_table == NULL) {
+            return NULL;
+        }
+
+        for(i = 0; i < size; i++){
+            if(strcmp(rules_names[i], "java") == 0){
+                language_rules_table = get_rules(JAVA_RULES);
+                if(language_rules_table){
+                    continue;
+                }
+                if (flb_hash_add(language_rules_table, "java", strlen("java"), language_rules_table, sizeof(struct flb_hash *)) < 0){
+                    flb_hash_destroy(language_rules_table);
+                }
+            }
+        }
+    }else{
+        rules_table = get_rules_by_names(supported_languages);
+    }
+
+    return rules_table;
+}
+
+
 

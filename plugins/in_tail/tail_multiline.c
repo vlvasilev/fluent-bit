@@ -24,6 +24,7 @@
 #include "tail_config.h"
 #include "tail_multiline.h"
 
+//this just append parser to the list of multiline parsers
 static int tail_mult_append(struct flb_parser *parser,
                             struct flb_tail_config *ctx)
 {
@@ -41,6 +42,12 @@ static int tail_mult_append(struct flb_parser *parser,
     return 0;
 }
 
+//This init the multiline section by taking the :
+/*
+multiline_flush
+parser_firstline
+parser_N
+*/
 int flb_tail_mult_create(struct flb_tail_config *ctx,
                          struct flb_input_instance *i_ins,
                          struct flb_config *config)
@@ -134,8 +141,12 @@ static int pack_line(char *data, size_t data_size, struct flb_tail_file *file,
     msgpack_sbuffer_init(&mp_sbuf);
     msgpack_packer_init(&mp_pck, &mp_sbuf, msgpack_sbuffer_write);
     flb_time_get(&out_time);
-
+    /*This pack the line like:
+    [current timestamp, {"key":"$line"}]
+    line is raw and non parsed
+    */
     flb_tail_file_pack_line(&mp_sbuf, &mp_pck, &out_time, data, data_size, file);
+    /* Append a RAW MessagPack buffer to the input instance ctx->i_ins with tag file->tag_buf*/
     flb_input_chunk_append_raw(ctx->i_ins,
                                file->tag_buf,
                                file->tag_len,

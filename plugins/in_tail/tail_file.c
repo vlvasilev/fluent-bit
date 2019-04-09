@@ -182,6 +182,9 @@ int flb_tail_pack_line_map(msgpack_sbuffer *mp_sbuf, msgpack_packer *mp_pck,
     return 0;
 }
 
+/*This pack the line like:
+[current timestamp, {"key":"$line"}]
+*/
 int flb_tail_file_pack_line(msgpack_sbuffer *mp_sbuf, msgpack_packer *mp_pck,
                             struct flb_time *time, char *data, size_t data_size,
                             struct flb_tail_file *file)
